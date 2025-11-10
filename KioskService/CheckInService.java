@@ -1,4 +1,4 @@
-package OopProject;
+package studycafe;
 
 public class CheckInService {
 
