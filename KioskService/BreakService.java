@@ -1,4 +1,4 @@
-package OopProject;
+package StudyCafe;
 
 public class BreakService {
 
