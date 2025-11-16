@@ -2,7 +2,7 @@ package Ticket;
 
 public class TimeTicket extends Ticket {
 
-    private int remainingMinutes;   // 남은 시간(분)
+    private int remainingMinutes;    // 남은 시간(분)
 
     public TimeTicket(int remainingMinutes) {
         this.remainingMinutes = Math.max(0, remainingMinutes);
@@ -21,11 +21,11 @@ public class TimeTicket extends Ticket {
     }
 
     //  연장 기능: 분 단위로 시간 추가
-    public void addMinutes(long minutes) {
+    public void addMinutes(int minutes) { // 💡 long -> int 로 변경됨
         if (minutes <= 0) return;
-        long total = (long) remainingMinutes + minutes;
-        // int 범위 넘지 않게
-        remainingMinutes = (int) Math.min(Integer.MAX_VALUE, total);
+        
+        // int 범위 넘지 않도록 long으로 합산 후 제한
+        remainingMinutes = (int) Math.min(Integer.MAX_VALUE, (long) remainingMinutes + minutes);
     }
 
     public int getRemainingMinutes() {
