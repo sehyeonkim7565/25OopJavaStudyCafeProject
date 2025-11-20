@@ -16,7 +16,6 @@ import java.util.List;
 
 public class KioskMainFrame extends JFrame {
 
-    // 화면 전환용 CardLayout 및 패널 
     private CardLayout cardLayout;
     private JPanel mainPanelContainer;
 
@@ -36,7 +35,6 @@ public class KioskMainFrame extends JFrame {
     // 현재 로그인한 회원 정보
     private Member currentMember;
 
-    // 패널 이름 상수 (같은 패키지 내에서 공유)
     public static final String LOGIN_PANEL = "Login";
     public static final String MAIN_MENU_PANEL = "MainMenu";
     public static final String TICKET_SELECTION_PANEL = "TicketSelection";
@@ -91,7 +89,7 @@ public class KioskMainFrame extends JFrame {
         this.memberManager = new MemberManager();
         this.priceManager = new PriceManager("config/price.json"); 
 
-        SeatFactory seatFactory = new SeatFactory(25); // 25개 좌석 예시
+        SeatFactory seatFactory = new SeatFactory(25);
         this.seatManager = new SeatManager(seatFactory.getSeatListInternal());
 
         // 서비스 객체 초기화
@@ -99,7 +97,7 @@ public class KioskMainFrame extends JFrame {
         this.ticketFactory = new TicketFactory();
         this.sessionManager = new SessionManager(seatManager);
 
-        // 서비스 객체 생성 (의존성 주입)
+        // 서비스 객체 생성
         this.checkInService = new CheckInService(memberManager, seatManager, sessionManager);
         this.checkOutService = new CheckOutService(seatManager, sessionManager, logManager); // LogManager 주입 (수정 필요)
         this.breakService = new BreakService(seatManager, sessionManager);
@@ -107,7 +105,6 @@ public class KioskMainFrame extends JFrame {
         this.purchaseService = new PurchaseService(priceManager, paymentService, ticketFactory, memberManager, logManager);
     }
 
-    // 화면을 전환하는 공용 메서드
     public void showPanel(String panelName) {
         if (panelName.equals(SEAT_MAP_PANEL)) {
             JPanel panel = findPanelByName(SEAT_MAP_PANEL);
@@ -118,7 +115,6 @@ public class KioskMainFrame extends JFrame {
         cardLayout.show(mainPanelContainer, panelName);
     }
 
-    // 패널 이름으로 객체를 찾는 헬퍼 메서드
     private JPanel findPanelByName(String panelName) {
         for (java.awt.Component comp : mainPanelContainer.getComponents()) {
             if (comp.getName() != null && comp.getName().equals(panelName)) {
