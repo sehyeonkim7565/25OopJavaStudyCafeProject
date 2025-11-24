@@ -6,6 +6,9 @@ import java.awt.event.ActionListener;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
+import Payment.OrderLogEntry; // 11/24 OrderLogEntry import
+import java.time.LocalDateTime; //
+import java.time.format.DateTimeFormatter; //
 
 public class ShopPanel extends JPanel {
 	
@@ -346,7 +349,18 @@ public class ShopPanel extends JPanel {
                                            .replace("\n", ", ")
                                            .replaceAll(" +", " ")
                                            .replaceAll("[,;] $", ""); // 끝 콤마/세미콜론 제거
-
+		// 11/24 현재 시간 문자열 생성
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        
+        // 11/24 OrderLogEntry 객체 생성(jsonl)
+        OrderLogEntry orderEntry = new OrderLogEntry(
+            timestamp,
+            memberId, 
+            seatNumber, 
+            detailedOrder, 
+            totalAmount
+        );
+		
         String logMessage = String.format("ORDER, %s, %s, %s, %,d원", 
                                           memberId, seatNumber, detailedOrder, totalAmount);
         
@@ -354,3 +368,4 @@ public class ShopPanel extends JPanel {
         System.out.println("[LOG] 주문 기록: " + logMessage);
     }
 }
+
