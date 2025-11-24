@@ -55,7 +55,7 @@ public class TicketSelectionPanel extends JPanel {
         add(bottomPanel, BorderLayout.SOUTH);
 
         dailyBtn.addActionListener(e -> mainFrame.showPanel(KioskMainFrame.SEAT_MAP_PANEL));
-        passBtn.addActionListener(e -> mainFrame.showPanel(KioskMainFrame.PASS_PURCHASE_PANEL));
+        passBtn.addActionListener(e -> mainFrame.showPassPurchaseForSelection());
         backBtn.addActionListener(e -> mainFrame.showPanel(KioskMainFrame.MAIN_MENU_PANEL));
     }
 }

@@ -198,6 +198,7 @@ public class KioskMainFrame extends JFrame {
     // 보유 티켓 유형에 맞춰 정기/시간권 탭을 선택 후 화면 표시
     public void showPassPurchaseForTime() {
         if (passPurchasePanel != null) {
+            passPurchasePanel.setBackToMainMenu(true);
             passPurchasePanel.selectTimeTab();
         }
         showPanel(PASS_PURCHASE_PANEL);
@@ -205,7 +206,16 @@ public class KioskMainFrame extends JFrame {
 
     public void showPassPurchaseForDuration() {
         if (passPurchasePanel != null) {
+            passPurchasePanel.setBackToMainMenu(true);
             passPurchasePanel.selectDurationTab();
+        }
+        showPanel(PASS_PURCHASE_PANEL);
+    }
+
+    // 티켓이 없는 사용자가 구매 흐름에서 진입할 때 (뒤로가기 시 종류 선택 화면으로)
+    public void showPassPurchaseForSelection() {
+        if (passPurchasePanel != null) {
+            passPurchasePanel.setBackToMainMenu(false);
         }
         showPanel(PASS_PURCHASE_PANEL);
     }

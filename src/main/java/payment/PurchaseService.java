@@ -95,7 +95,7 @@ public class PurchaseService {
     private int processPayment(TicketProduct product, String paymentMethod) throws Exception {
         int price = priceManager.getPrice(product);
         if (price == 0) {
-            throw new Exception("유효하지 않은 상품입니다.");
+            throw new Exception("유효하지 않은 상품이거나 가격 정보를 읽지 못했습니다.");
         }
 
         boolean paymentSuccess = paymentService.processPayment(price, paymentMethod);
@@ -118,6 +118,14 @@ public class PurchaseService {
         if (price > 0) {
             System.err.println("결제 성공, 이용권 발급 실패: 관리자에게" + price + "원 환불 문의 바람\n010-1234-5678");
         }
+    }
+
+    /**
+     * 회원이 현재 유효한 이용권을 보유했는지 확인
+     */
+    public boolean hasValidTicket(String memberID) {
+        Member member = memberManager.findMemberById(memberID);
+        return member != null && member.hasValidTicket();
     }
 
     private boolean isTimeProduct(TicketProduct product) {
