@@ -10,6 +10,7 @@ import java.util.Vector;
 public class ShopPanel extends JPanel {
 	
 	private KioskMainFrame parentFrame; // KioskMainFrame 인스턴스 저장
+	private ILogManager logManager; // 11/23 멤버변수 추가
 	
     // 주문 정보를 저장할 맵 (상품명 -> 수량)
     private Map<String, Integer> orderMap = new HashMap<>();
@@ -37,6 +38,7 @@ public class ShopPanel extends JPanel {
 
     public ShopPanel(KioskMainFrame parentFrame) {
     	this.parentFrame = parentFrame;
+		this.logManager = logManager; // 11/23 초기화
         
     	setLayout(new BorderLayout(10, 10));
     	
@@ -319,14 +321,36 @@ public class ShopPanel extends JPanel {
         public int getIconHeight() { return height; }
     }
 
-    /*
-    public static void main(String[] args) {
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {
-            e.printStackTrace();
+	 /**
+     * 11/23
+     * 로그 파일에 주문 내역을 기록하는 메서드
+     * 형식: 시간, 이용자ID, 좌석번호, 주문내역, 총액
+     */
+    private void logOrderDetails(String orderSummary, long totalAmount) {
+        if (logManager == null) {
+            System.err.println("LogManager가 초기화되지 않았습니다. 로그 기록 실패.");
+            return;
         }
-        SwingUtilities.invokeLater(() -> new ShopPanel());
+
+        // 현재 사용자 정보 가져오기
+        Member currentMember = parentFrame.getCurrentMember();
+        String memberId = (currentMember != null) ? currentMember.getId() : "NON_MEMBER";
+        String seatNumber = "N/A"; // 좌석 번호 초기값
+
+        Seat seat = parentFrame.getSeatManager().findSeatByMember(memberId);
+        if (seat != null) {
+            seatNumber = String.valueOf(seat.getSeatNumber()); 
+        }
+
+        String detailedOrder = orderSummary.trim()
+                                           .replace("\n", ", ")
+                                           .replaceAll(" +", " ")
+                                           .replaceAll("[,;] $", ""); // 끝 콤마/세미콜론 제거
+
+        String logMessage = String.format("ORDER, %s, %s, %s, %,d원", 
+                                          memberId, seatNumber, detailedOrder, totalAmount);
+        
+        logManager.saveOrderLog(logMessage); // ILogManager의 log(String message) 메서드를 사용
+        System.out.println("[LOG] 주문 기록: " + logMessage);
     }
-    */
 }
