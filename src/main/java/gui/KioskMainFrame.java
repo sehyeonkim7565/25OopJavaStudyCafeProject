@@ -3,7 +3,6 @@ package gui;
 import KioskService.*;
 import ReadingRoomLogin.Member;
 import ReadingRoomLogin.MemberManager;
-import Seat.Seat;
 import SeatManager.SeatFactory;
 import SeatManager.SeatManager;
 import payment.*;
@@ -12,7 +11,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import java.awt.CardLayout;
-import java.util.List;
+import javax.swing.Timer;
 
 public class KioskMainFrame extends JFrame {
 
@@ -27,11 +26,14 @@ public class KioskMainFrame extends JFrame {
     private SessionManager sessionManager;
     private CheckInService checkInService;
     private CheckOutService checkOutService;
-    private BreakService breakService;
+    private SeatMoveService seatMoveService;
     private PurchaseService purchaseService;
     private PaymentService paymentService;
     private TicketFactory ticketFactory;
     private ILogManager logManager;
+    private PassPurchasePanel passPurchasePanel;
+    private Timer usageLogTimer;
+    private boolean seatMoveMode = false;
 
     private MainMenuPanel mainMenuPanel; // 11/17 클래스 멤버 변수 선언
     
@@ -50,7 +52,7 @@ public class KioskMainFrame extends JFrame {
 
     public KioskMainFrame() {
         setTitle("자리있조 스터디 카페 키오스크");
-        setSize(950, 700); // 11/17 사이즈 변경
+        setSize(1000, 700);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
@@ -63,12 +65,13 @@ public class KioskMainFrame extends JFrame {
 
         LoginPanel loginPanel = new LoginPanel(this, memberManager);
         // 11/17 로컬 변수 선언을 제거하고 멤버변수 할당
-        this.mainMenuPanel = new MainMenuPanel(this, checkInService, checkOutService, breakService, seatManager);
+        this.mainMenuPanel = new MainMenuPanel(this, checkInService, checkOutService, seatManager, sessionManager, seatMoveService);
         TicketSelectionPanel ticketSelectionPanel = new TicketSelectionPanel(this);
-        SeatMapPanel seatMapPanel = new SeatMapPanel(this, seatManager);
-        DailyTicketPanel dailyTicketPanel = new DailyTicketPanel(this, priceManager);
-        PassPurchasePanel passPurchasePanel = new PassPurchasePanel(this, priceManager);
-        ShopPanel shopPanel = new ShopPanel(this); // 11/17 상품주문 패널
+        SeatMapPanel seatMapPanel = new SeatMapPanel(this, seatManager, checkInService, seatMoveService);
+        // 결제/구매 흐름에서도 PurchaseService를 사용하도록 주입
+        DailyTicketPanel dailyTicketPanel = new DailyTicketPanel(this, priceManager, purchaseService);
+        this.passPurchasePanel = new PassPurchasePanel(this, priceManager, purchaseService);
+        ShopPanel shopPanel = new ShopPanel(this, logManager); // 상품주문 패널
         
         loginPanel.setName(LOGIN_PANEL);
         mainMenuPanel.setName(MAIN_MENU_PANEL);
@@ -90,6 +93,14 @@ public class KioskMainFrame extends JFrame {
 
         // 첫 화면은 로그인 화면
         cardLayout.show(mainPanelContainer, LOGIN_PANEL);
+
+        // 진행 중 세션의 경과 시간을 usage.jsonl에 1분마다 갱신
+        usageLogTimer = new Timer(60_000, e -> {
+            if (logManager != null) {
+                logManager.refreshOngoingUsageDurations();
+            }
+        });
+        usageLogTimer.start();
     }
 
     private void initializeManagersAndServices() {
@@ -107,10 +118,9 @@ public class KioskMainFrame extends JFrame {
         this.sessionManager = new SessionManager(seatManager);
 
         // 서비스 객체 생성 (의존성 주입)
-        this.checkInService = new CheckInService(memberManager, seatManager, sessionManager);
-        this.checkOutService = new CheckOutService(seatManager, sessionManager, logManager); // LogManager 주입 (수정 필요)
-        this.breakService = new BreakService(seatManager, sessionManager);
-
+        this.checkInService = new CheckInService(memberManager, seatManager, sessionManager, logManager);
+        this.checkOutService = new CheckOutService(seatManager, sessionManager, memberManager, logManager); // 로그/회원 정보 주입
+        this.seatMoveService = new SeatMoveService(seatManager, sessionManager, logManager);
         this.purchaseService = new PurchaseService(priceManager, paymentService, ticketFactory, memberManager, logManager);
     }
 
@@ -170,6 +180,35 @@ public class KioskMainFrame extends JFrame {
 
     public CheckInService getCheckInService() { return checkInService; }
     public PurchaseService getPurchaseService() { return purchaseService; }
+
+    // 좌석 이동 모드 제어
+    public void startSeatMoveMode() {
+        seatMoveMode = true;
+        showPanel(SEAT_MAP_PANEL);
+    }
+
+    public void endSeatMoveMode() {
+        seatMoveMode = false;
+    }
+
+    public boolean isSeatMoveMode() {
+        return seatMoveMode;
+    }
+
+    // 보유 티켓 유형에 맞춰 정기/시간권 탭을 선택 후 화면 표시
+    public void showPassPurchaseForTime() {
+        if (passPurchasePanel != null) {
+            passPurchasePanel.selectTimeTab();
+        }
+        showPanel(PASS_PURCHASE_PANEL);
+    }
+
+    public void showPassPurchaseForDuration() {
+        if (passPurchasePanel != null) {
+            passPurchasePanel.selectDurationTab();
+        }
+        showPanel(PASS_PURCHASE_PANEL);
+    }
 
     // 프로그램 시작
     public static void main(String[] args) {

@@ -48,7 +48,11 @@ public class SessionManager {
 
         // 좌석 찾기
         Seat seat = seatManager.findSeatByNumber(seatNumber);
-        if (seat == null || !seat.isAvailable()) {
+        // 이미 다른 사람이 사용 중인 좌석이면 시작 불가, 본인이 점유한 상태는 허용
+        if (seat == null) {
+            return null;
+        }
+        if (!seat.isAvailable() && !memberId.equals(seat.getOccupantId())) {
             return null;
         }
 
@@ -78,8 +82,7 @@ public class SessionManager {
     }
 
     /**
-     * 진행 중인 세션 조회 (외출 후 복귀에 사용).
-     * 없으면 null.
+     * 진행 중인 세션 조회. 없으면 null.
      */
     public UsageSession getActiveSession(String memberId) {
         if (memberId == null) return null;

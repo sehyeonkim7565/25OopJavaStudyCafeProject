@@ -3,58 +3,93 @@ package gui;
 import KioskService.*;
 import SeatManager.SeatManager;
 import ReadingRoomLogin.Member;
+import Ticket.DurationTicket;
+import Ticket.TimeTicket;
+import Seat.UsageSession;
+import KioskService.SeatMoveService;
 
 import javax.swing.JPanel;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingConstants;
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.Timer;
 import java.awt.GridLayout;
 import java.awt.BorderLayout;
+import java.awt.Color;
 
 public class MainMenuPanel extends JPanel {
 
     private KioskMainFrame mainFrame;
     private JLabel welcomeLabel;
+    private JLabel sessionInfoLabel;
 
     private SeatManager seatManager;
     private CheckInService checkInService;
     private CheckOutService checkOutService;
-    private BreakService breakService;
+    private SessionManager sessionManager;
+    private SeatMoveService seatMoveService;
+    private Timer sessionTimer;
 
-    public MainMenuPanel(KioskMainFrame mainFrame, CheckInService checkIn, CheckOutService checkOut, BreakService breakSvc, SeatManager seatManager) {
+    public MainMenuPanel(KioskMainFrame mainFrame, CheckInService checkIn, CheckOutService checkOut, SeatManager seatManager, SessionManager sessionManager, SeatMoveService seatMoveService) {
         this.mainFrame = mainFrame;
         this.checkInService = checkIn;
         this.checkOutService = checkOut;
-        this.breakService = breakSvc;
         this.seatManager = seatManager;
+        this.sessionManager = sessionManager;
+        this.seatMoveService = seatMoveService;
 
-        setLayout(new BorderLayout(10, 10));
+        setLayout(new BorderLayout());
+        setBackground(Theme.BACKGROUND_COLOR);
+
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
+        headerPanel.setBackground(Theme.BACKGROUND_COLOR);
 
         welcomeLabel = new JLabel("", SwingConstants.CENTER);
-        add(welcomeLabel, BorderLayout.NORTH);
+        Theme.styleLabel(welcomeLabel, Theme.TITLE_FONT);
+        welcomeLabel.setBorder(BorderFactory.createEmptyBorder(30, 0, 10, 0));
+        welcomeLabel.setAlignmentX(CENTER_ALIGNMENT);
 
-        JPanel buttonPanel = new JPanel(new GridLayout(6, 1, 10, 10));
+        sessionInfoLabel = new JLabel("", SwingConstants.CENTER);
+        Theme.styleLabel(sessionInfoLabel, Theme.MAIN_FONT);
+        sessionInfoLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+        sessionInfoLabel.setAlignmentX(CENTER_ALIGNMENT);
+
+        headerPanel.add(welcomeLabel);
+        headerPanel.add(sessionInfoLabel);
+        add(headerPanel, BorderLayout.NORTH);
+
+        JPanel buttonPanel = new JPanel(new GridLayout(3, 2, 20, 20));
+        buttonPanel.setBackground(Theme.BACKGROUND_COLOR);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(20, 50, 50, 50));
         
-        JButton checkInBtn = new JButton("입실");
+        JButton checkInBtn = new JButton("입실 / 좌석배정");
         JButton checkOutBtn = new JButton("퇴실");
-        JButton breakBtn = new JButton("외출/복귀");
-        JButton extendBtn = new JButton("시간 연장(당일권)");
-        JButton orderBtn = new JButton("상품 주문 (준비중)");
+        JButton extendBtn = new JButton("시간 연장");
+        JButton orderBtn = new JButton("상품 주문");
         JButton logoutBtn = new JButton("로그아웃");
+        JButton placeholderBtn = new JButton("자리 이동하기");
 
         buttonPanel.add(checkInBtn);
         buttonPanel.add(checkOutBtn);
-        buttonPanel.add(breakBtn);
+        buttonPanel.add(placeholderBtn);
         buttonPanel.add(extendBtn);
         buttonPanel.add(orderBtn);
         buttonPanel.add(logoutBtn);
         
         add(buttonPanel, BorderLayout.CENTER);
-        
-        // addNotify(); 
 
-        // 11/17 checkInBtn 디버깅 모드로 수정
+        Theme.styleButton(checkInBtn);
+        Theme.styleButton(checkOutBtn);
+        Theme.styleButton(extendBtn);
+        Theme.styleButton(placeholderBtn);
+        Theme.styleButton(orderBtn);
+        Theme.styleSecondaryButton(logoutBtn);
+        logoutBtn.setBackground(new Color(200, 100, 100));
+
         checkInBtn.addActionListener(e -> {
             System.out.println("--- 입실 버튼 클릭 ---");
             Member member = mainFrame.getCurrentMember(); // Member 객체 사용
@@ -81,6 +116,8 @@ public class MainMenuPanel extends JPanel {
             
             System.out.println("유효 티켓 확인: " + member.hasValidTicket());
             if (member.hasValidTicket()) {
+                // 일반 입실 흐름에서는 이동 모드 해제
+                mainFrame.endSeatMoveMode();
                 mainFrame.showPanel(KioskMainFrame.SEAT_MAP_PANEL); 
             } else {
                 mainFrame.showPanel(KioskMainFrame.TICKET_SELECTION_PANEL);
@@ -101,19 +138,41 @@ public class MainMenuPanel extends JPanel {
         });
 
 
-        // 아래 버튼도 유사하게 수정 필요
-        breakBtn.addActionListener(e -> {
-            JOptionPane.showMessageDialog(mainFrame, "외출/복귀 처리되었습니다.");
-        });
-
         extendBtn.addActionListener(e -> {
-            mainFrame.showPanel(KioskMainFrame.DAILY_TICKET_PANEL);
+            Member member = mainFrame.getCurrentMember();
+            if (member == null) {
+                JOptionPane.showMessageDialog(mainFrame, "로그인이 필요합니다.");
+                mainFrame.showPanel(KioskMainFrame.LOGIN_PANEL);
+                return;
+            }
+
+            if (member.getTicket() instanceof TimeTicket) {
+                JOptionPane.showMessageDialog(mainFrame, "시간권 연장 화면으로 이동합니다.");
+                mainFrame.showPassPurchaseForTime();
+            } else if (member.getTicket() instanceof DurationTicket) {
+                JOptionPane.showMessageDialog(mainFrame, "기간권/정기권 연장 화면으로 이동합니다.");
+                mainFrame.showPassPurchaseForDuration();
+            } else {
+                // 티켓이 없으면 기존 흐름 유지
+                JOptionPane.showMessageDialog(mainFrame, "이용권이 없습니다. 구매 화면으로 이동합니다.");
+                mainFrame.showPanel(KioskMainFrame.TICKET_SELECTION_PANEL);
+            }
         });
 
         // 11/17 주문 버튼 리스너 구현
         orderBtn.addActionListener(e -> {
         	mainFrame.showPanel(KioskMainFrame.SHOP_PANEL);
         }); 
+
+        placeholderBtn.addActionListener(e -> {
+            Member member = mainFrame.getCurrentMember();
+            if (member == null) {
+                JOptionPane.showMessageDialog(mainFrame, "로그인이 필요합니다.");
+                return;
+            }
+            JOptionPane.showMessageDialog(mainFrame, "이동할 좌석을 선택하세요.");
+            mainFrame.startSeatMoveMode();
+        });
 
         logoutBtn.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(mainFrame, "로그아웃 하시겠습니까?", "확인", JOptionPane.YES_NO_OPTION);
@@ -123,7 +182,9 @@ public class MainMenuPanel extends JPanel {
             }
         });
 
-        add(buttonPanel, BorderLayout.CENTER);
+        // 30초마다 진행 중 세션 시간 갱신
+        sessionTimer = new Timer(30_000, e -> refreshSessionInfo());
+        sessionTimer.start();
     }
 
     // 11/17 updateWelcomeMessage 메인메뉴 라벨 메시지 디버그 모드로 생성
@@ -131,11 +192,13 @@ public class MainMenuPanel extends JPanel {
     	Member member = mainFrame.getCurrentMember();
         
         if(member != null) {
-            String message = member.getName() + "님, 환영합니다! 🎉";
+            String message = member.getName() + "님, 오늘도 열공하세요!";
             welcomeLabel.setText(message);
             System.out.println("[MainMenuPanel Debug] 메시지 설정 성공: " + message);
+            refreshSessionInfo();
         } else {
             welcomeLabel.setText("로그인 하지 않음!");
+            sessionInfoLabel.setText("");
             System.out.println("[MainMenuPanel Debug] 멤버 없음: 로그인 하지 않음!");
         }
         
@@ -147,5 +210,31 @@ public class MainMenuPanel extends JPanel {
     @Override
     public void addNotify() {
         super.addNotify();
+        if (sessionTimer != null && !sessionTimer.isRunning()) {
+            sessionTimer.start();
+        }
+    }
+
+    @Override
+    public void removeNotify() {
+        super.removeNotify();
+        if (sessionTimer != null && sessionTimer.isRunning()) {
+            sessionTimer.stop();
+        }
+    }
+
+    private void refreshSessionInfo() {
+        Member member = mainFrame.getCurrentMember();
+        if (member == null) {
+            sessionInfoLabel.setText("");
+            return;
+        }
+        UsageSession session = sessionManager.getActiveSession(member.getId());
+        if (session != null) {
+            long minutes = session.getDurationInMinutes();
+            sessionInfoLabel.setText("오늘의 공부 시간 : " + minutes + "분");
+        } else {
+            sessionInfoLabel.setText("");
+        }
     }
 }

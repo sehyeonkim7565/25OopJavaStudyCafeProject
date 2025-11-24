@@ -16,7 +16,13 @@ public class PriceDataLoader {
         Gson gson = new Gson();
         Map<TicketProduct, Integer> priceList = new HashMap<>();
 
-        try (Reader reader = Files.newBufferedReader(Paths.get(filePath))) {
+        // 워킹 디렉터리가 어디든 읽을 수 있도록 기본 경로+fallback 경로를 모두 시도
+        java.nio.file.Path path = Paths.get(filePath);
+        if (!Files.exists(path)) {
+            path = Paths.get("src/main/java", filePath);
+        }
+
+        try (Reader reader = Files.newBufferedReader(path)) {
             Type stringMapType = new TypeToken<Map<String, Integer>>() {}.getType();
             Map<String, Integer> stringPriceMap = gson.fromJson(reader, stringMapType);
 

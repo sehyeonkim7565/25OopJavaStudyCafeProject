@@ -1,8 +1,16 @@
 package gui;
 import javax.swing.*;
+
+import Seat.Seat;
+import ReadingRoomLogin.Member;
+import payment.ILogManager;
+import payment.OrderLogEntry;
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Vector;
@@ -10,6 +18,7 @@ import java.util.Vector;
 public class ShopPanel extends JPanel {
 	
 	private KioskMainFrame parentFrame; // KioskMainFrame 인스턴스 저장
+    private ILogManager logManager;     // 주문 로그용
 	
     // 주문 정보를 저장할 맵 (상품명 -> 수량)
     private Map<String, Integer> orderMap = new HashMap<>();
@@ -35,16 +44,20 @@ public class ShopPanel extends JPanel {
         });
     }};
 
-    public ShopPanel(KioskMainFrame parentFrame) {
+    public ShopPanel(KioskMainFrame parentFrame, ILogManager logManager) {
     	this.parentFrame = parentFrame;
+        this.logManager = logManager;
         
-    	setLayout(new BorderLayout(10, 10));
+    	setLayout(new BorderLayout());
+        setBackground(Theme.BACKGROUND_COLOR);
     	
     	JPanel topPanel = new JPanel(new BorderLayout());
-        JLabel titleLabel = new JLabel("✨ 상품 주문 페이지", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("맑은 고딕", Font.BOLD, 20));
-        JButton backButton = new JButton("◀ 돌아가기");
-        
+        topPanel.setBackground(Theme.BACKGROUND_COLOR);
+        topPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        JLabel titleLabel = new JLabel("✨ 상품 주문", SwingConstants.CENTER);
+        Theme.styleLabel(titleLabel, Theme.TITLE_FONT);
+        JButton backButton = new JButton("돌아가기");
+        Theme.styleSecondaryButton(backButton);
         
         backButton.addActionListener(e -> {
             // 장바구니 비우기 확인 (선택 사항)
@@ -66,8 +79,9 @@ public class ShopPanel extends JPanel {
         // 1. 카테고리 패널 (WEST)
         JList<String> categoryList = new JList<>(new Vector<>(productData.keySet()));
         categoryList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        categoryList.setFont(new Font("맑은 고딕", Font.BOLD, 18));
-        categoryList.setPreferredSize(new Dimension(150, 0));
+        categoryList.setFont(Theme.MAIN_FONT.deriveFont(Font.BOLD, 16f));
+        categoryList.setBackground(Color.WHITE);
+        categoryList.setPreferredSize(new Dimension(160, 0));
         
         categoryList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -78,36 +92,46 @@ public class ShopPanel extends JPanel {
             }
         });
         
-        add(new JScrollPane(categoryList), BorderLayout.WEST);
+        JScrollPane categoryScroll = new JScrollPane(categoryList);
+        categoryScroll.setBorder(BorderFactory.createLineBorder(new Color(220, 226, 235)));
+        add(categoryScroll, BorderLayout.WEST);
 
         // 2. 상품 목록 패널 (CENTER)
-        itemPanel = new JPanel(new GridLayout(0, 3, 10, 10)); // 3열 그리드, 간격 10
-        itemPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        add(new JScrollPane(itemPanel), BorderLayout.CENTER);
+        itemPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 12)); // 고정 크기 카드가 흐르도록 배치
+        itemPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        itemPanel.setBackground(Color.WHITE);
+        JScrollPane itemScroll = new JScrollPane(itemPanel);
+        itemScroll.getVerticalScrollBar().setUnitIncrement(16);
+        add(itemScroll, BorderLayout.CENTER);
 
         // 3. 장바구니/주문 패널 (EAST)
         JPanel orderPanel = new JPanel(new BorderLayout());
+        orderPanel.setBackground(Theme.BACKGROUND_COLOR);
+        orderPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
         cartPanel = new JPanel();
         cartPanel.setLayout(new BoxLayout(cartPanel, BoxLayout.Y_AXIS)); // 장바구니 항목을 세로로 쌓음
+        cartPanel.setBackground(Color.WHITE);
         
         JScrollPane cartScrollPane = new JScrollPane(cartPanel);
         cartScrollPane.setBorder(BorderFactory.createTitledBorder("🛒 장바구니 내역"));
         
         totalLabel = new JLabel("총 결제 금액: 0원", SwingConstants.RIGHT);
-        totalLabel.setFont(new Font("맑은 고딕", Font.BOLD, 22));
+        totalLabel.setFont(Theme.TITLE_FONT.deriveFont(18f));
         
         JButton confirmButton = new JButton("주문 완료 및 결제");
-        confirmButton.setFont(new Font("맑은 고딕", Font.BOLD, 18));
+        Theme.styleButton(confirmButton);
         confirmButton.setBackground(new Color(60, 179, 113));
         confirmButton.setForeground(Color.WHITE);
         confirmButton.addActionListener(e -> completeOrder());
 
-        JPanel bottomControlPanel = new JPanel(new GridLayout(2, 1, 5, 5));
+        JPanel bottomControlPanel = new JPanel(new GridLayout(2, 1, 8, 8));
+        bottomControlPanel.setBackground(Theme.BACKGROUND_COLOR);
+        bottomControlPanel.setBorder(BorderFactory.createEmptyBorder(10, 5, 10, 5));
         bottomControlPanel.add(totalLabel);
         bottomControlPanel.add(confirmButton);
 
-        orderPanel.setPreferredSize(new Dimension(300, 0));
+        orderPanel.setPreferredSize(new Dimension(320, 0));
         orderPanel.add(cartScrollPane, BorderLayout.CENTER);
         orderPanel.add(bottomControlPanel, BorderLayout.SOUTH);
 
@@ -137,6 +161,27 @@ public class ShopPanel extends JPanel {
 
         itemPanel.revalidate();
         itemPanel.repaint();
+    }
+    
+    private JButton createItemButton(String name, int price) {
+        String text = String.format("<html><center>%s<br><font size=5>%,d원</font></center></html>", name, price);
+        JButton btn = new JButton(text);
+        Theme.styleButton(btn);
+        btn.setPreferredSize(new Dimension(150, 170)); // 높이를 조금 더 줄여 2행에 맞춤
+        btn.setHorizontalTextPosition(SwingConstants.CENTER);
+        btn.setVerticalTextPosition(SwingConstants.BOTTOM);
+        btn.setIconTextGap(10);
+        btn.setIcon(createPlaceholderIcon(130, 120));
+        return btn;
+    }
+
+    private Icon createPlaceholderIcon(int w, int h) {
+        BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2 = img.createGraphics();
+        g2.setColor(new Color(200, 214, 232));
+        g2.fillRect(0, 0, w, h);
+        g2.dispose();
+        return new ImageIcon(img);
     }
     
     // 장바구니에 상품 추가
@@ -180,12 +225,7 @@ public class ShopPanel extends JPanel {
             
             JButton deleteButton = new JButton("삭제");
             deleteButton.setPreferredSize(new Dimension(70, 30));
-            deleteButton.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    removeItemFromCart(name); // 해당 상품명 제거
-                }
-            });
+            deleteButton.addActionListener((ActionEvent e) -> removeItemFromCart(name));
 
             itemRow.add(itemLabel, BorderLayout.CENTER);
             itemRow.add(deleteButton, BorderLayout.EAST);
@@ -218,39 +258,15 @@ public class ShopPanel extends JPanel {
         }
         return 0;
     }
-    
-    // 상품 버튼 생성 메서드 (이미지 + 텍스트) - 이전 코드와 동일
-    private JButton createItemButton(String name, int price) {
-        JButton button = new JButton();
-        button.setLayout(new BorderLayout());
-        button.setBackground(Color.WHITE);
-        
-        // 이미지 대체 영역 (빈 사각형)
-        JLabel imageLabel = new JLabel(new EmptyIcon(100, 100, new Color(240, 240, 240)), SwingConstants.CENTER); 
-        
-        // 텍스트 영역
-        String htmlText = String.format("<html><div style='text-align: center; padding: 5px;'>" +
-                                        "<b>%s</b><br>%,d원</div></html>", name, price);
-        JLabel textLabel = new JLabel(htmlText, SwingConstants.CENTER);
-        textLabel.setFont(new Font("맑은 고딕", Font.PLAIN, 14));
-        textLabel.setForeground(Color.BLACK);
 
-        button.add(imageLabel, BorderLayout.CENTER);
-        button.add(textLabel, BorderLayout.SOUTH);
-        
-        return button;
-    }
-
-    // 주문 완료 처리
+    // 주문 완료 로직 (기존 동작 유지)
     private void completeOrder() {
         if (orderMap.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "주문할 상품을 먼저 장바구니에 담아주세요.", "알림", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "장바구니가 비어 있습니다.");
             return;
         }
-        
         long total = calculateTotalAmount();
         StringBuilder summaryBuilder = new StringBuilder();
-        
         for (Map.Entry<String, Integer> entry : orderMap.entrySet()) {
             String name = entry.getKey();
             int quantity = entry.getValue();
@@ -258,22 +274,13 @@ public class ShopPanel extends JPanel {
             summaryBuilder.append(String.format("%s x %d개 (%,d원)\n", name, quantity, itemTotal));
         }
 
-        String message = String.format(
-            "*** 최종 주문 내역 ***\n" +
-            "%s\n" +
-            "----------------------------\n" +
-            "총 결제 금액: %,d원\n\n" +
-            "결제가 완료되었습니다. 상품을 준비하겠습니다.",
-            summaryBuilder.toString(), total
-        );
+        // 주문 로그 기록
+        logOrderDetails(summaryBuilder.toString(), total);
 
-        JOptionPane.showMessageDialog(this, message, "주문 완료", JOptionPane.INFORMATION_MESSAGE);
-        
-        // 주문 초기화
+        JOptionPane.showMessageDialog(this, "주문이 완료되었습니다!");
         clearCart();
     }
-    
-    // 총 금액 계산 헬퍼 메서드
+
     private long calculateTotalAmount() {
         long totalAmount = 0;
         for (Map.Entry<String, Integer> entry : orderMap.entrySet()) {
@@ -284,49 +291,39 @@ public class ShopPanel extends JPanel {
         return totalAmount;
     }
 
-    // 빈 사각형 아이콘 클래스 - 이전 코드와 동일
-    private static class EmptyIcon implements Icon {
-        private final int width;
-        private final int height;
-        private final Color color;
-
-        public EmptyIcon(int width, int height, Color color) {
-            this.width = width;
-            this.height = height;
-            this.color = color;
+     /**
+     * 11/23
+     * 로그 파일에 주문 내역을 기록하는 메서드
+     * 형식: 시간, 이용자ID, 좌석번호, 주문내역, 총액
+     */
+    private void logOrderDetails(String orderSummary, long totalAmount) {
+        if (logManager == null) {
+            System.err.println("LogManager가 초기화되지 않았습니다. 로그 기록 실패.");
+            return;
         }
 
-        @Override
-        public void paintIcon(Component c, Graphics g, int x, int y) {
-            g.setColor(color);
-            g.fillRect(x, y, width, height);
-            g.setColor(Color.DARK_GRAY);
-            g.drawRect(x, y, width - 1, height - 1);
-            
-            g.setFont(new Font("맑은 고딕", Font.PLAIN, 10));
-            g.setColor(Color.DARK_GRAY);
-            String text = "이미지 준비 중";
-            FontMetrics fm = g.getFontMetrics();
-            int textX = x + (width - fm.stringWidth(text)) / 2;
-            int textY = y + (height - fm.getHeight()) / 2 + fm.getAscent();
-            g.drawString(text, textX, textY);
+        // 현재 사용자 정보 가져오기
+        Member currentMember = parentFrame.getCurrentMember();
+        String memberId = (currentMember != null) ? currentMember.getId() : "NON_MEMBER";
+        String seatNumber = "N/A"; // 좌석 번호 초기값
+
+        Seat seat = parentFrame.getSeatManager().findSeatByMember(memberId);
+        if (seat != null) {
+            seatNumber = String.valueOf(seat.getSeatNumber()); 
         }
 
-        @Override
-        public int getIconWidth() { return width; }
+        String detailedOrder = orderSummary.trim()
+                                           .replace("\n", ", ")
+                                           .replaceAll(" +", " ")
+                                           .replaceAll("[,;] $", ""); // 끝 콤마/세미콜론 제거
 
-        @Override
-        public int getIconHeight() { return height; }
-    }
-
-    /*
-    public static void main(String[] args) {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        OrderLogEntry entry = new OrderLogEntry(timestamp, memberId, seatNumber, detailedOrder, totalAmount);
         try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {
-            e.printStackTrace();
+            logManager.saveOrderLog(entry);
+            System.out.println("[LOG] 주문 기록: " + detailedOrder);
+        } catch (Exception ex) {
+            System.err.println("주문 로그 기록 실패: " + ex.getMessage());
         }
-        SwingUtilities.invokeLater(() -> new ShopPanel());
     }
-    */
 }

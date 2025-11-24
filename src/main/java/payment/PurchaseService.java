@@ -26,7 +26,28 @@ public class PurchaseService {
         try {
             price = processPayment(product, paymentMethod);
 
-            Ticket newTicket = ticketFactory.createTicket(product);
+            Member member = memberManager.findMemberById(memberID);
+            if (member == null) {
+                throw new Exception("존재하지 않는 회원입니다.");
+            }
+
+            Ticket current = member.getTicket();
+            Ticket newTicket;
+            long hours = ticketFactory.getHoursFromProduct(product);
+
+            if (current instanceof TimeTicket && isTimeProduct(product) && hours > 0) {
+                // 시간권 보유 시 연장: 남은 시간 누적
+                ((TimeTicket) current).addMinutes(hours * 60);
+                newTicket = current;
+            } else if (current instanceof DurationTicket && isDurationProduct(product) && hours > 0) {
+                // 당일/기간권 보유 시 연장: 만료 시각 뒤로 밀기
+                ((DurationTicket) current).extendDuration(hours);
+                newTicket = current;
+            } else {
+                // 보유권이 없으면 새로 발급
+                newTicket = ticketFactory.createTicket(product);
+            }
+
             memberManager.setTicket(memberID, newTicket);
             memberManager.saveMembersToFile();
 
@@ -63,7 +84,7 @@ public class PurchaseService {
             memberManager.saveMembersToFile();
 
             logPayment(memberID, extensionProduct, price, paymentMethod);
-            System.out.println("연장 성공");
+            System.out.println("연장 되었습니다.");
             return true;
         } catch (Exception e) {
             handleCriticalError(e, price);
@@ -96,6 +117,33 @@ public class PurchaseService {
 
         if (price > 0) {
             System.err.println("결제 성공, 이용권 발급 실패: 관리자에게" + price + "원 환불 문의 바람\n010-1234-5678");
+        }
+    }
+
+    private boolean isTimeProduct(TicketProduct product) {
+        switch (product) {
+            case TIME_50H:
+            case TIME_100H:
+            case TIME_200H:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private boolean isDurationProduct(TicketProduct product) {
+        switch (product) {
+            case DAILY_3H:
+            case DAILY_6H:
+            case DAILY_12H:
+            case DAILY_24H:
+            case DURATION_1W:
+            case DURATION_2W:
+            case DURATION_1M:
+            case DURATION_3M:
+                return true;
+            default:
+                return false;
         }
     }
 }

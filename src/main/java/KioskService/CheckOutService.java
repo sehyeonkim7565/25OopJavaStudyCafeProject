@@ -3,6 +3,9 @@ package KioskService;
 import Seat.Seat;
 import Seat.UsageSession;
 import SeatManager.SeatManager;
+import ReadingRoomLogin.Member;
+import ReadingRoomLogin.MemberManager;
+import Ticket.TimeTicket;
 import payment.ILogManager;
 
 
@@ -10,11 +13,17 @@ public class CheckOutService {
 
     private SeatManager seatManager;
     private SessionManager sessionManager;
+    private MemberManager memberManager;
+    private ILogManager logManager;
 
     public CheckOutService(SeatManager seatManager,
-                           SessionManager sessionManager, ILogManager logManager) {
+                           SessionManager sessionManager,
+                           MemberManager memberManager,
+                           ILogManager logManager) {
         this.seatManager = seatManager;
         this.sessionManager = sessionManager;
+        this.memberManager = memberManager;
+        this.logManager = logManager;
     }
 
     /*
@@ -35,8 +44,20 @@ public class CheckOutService {
             return false;
         }
 
-        // 이용 시간 계산
-        //long durationMinutes = session.getDurationMinutes();
+        // 시간권이면 이용 시간만큼 차감
+        if (memberManager != null) {
+            Member member = memberManager.findMemberById(memberId);
+            if (member != null && member.getTicket() instanceof TimeTicket) {
+                long minutes = session.getDurationInMinutes();
+                ((TimeTicket) member.getTicket()).deductTime((int) minutes);
+                memberManager.saveMembers();
+            }
+        }
+
+        // 입실/퇴실 시각과 이용 시간을 로그로 저장
+        if (logManager != null) {
+            logManager.updateUsageEnd(session);
+        }
 
         // 좌석 비우기
         seatManager.vacateSeat(memberId);

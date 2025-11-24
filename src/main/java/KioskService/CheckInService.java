@@ -3,6 +3,7 @@ package KioskService;
 import ReadingRoomLogin.Member;
 import ReadingRoomLogin.MemberManager;
 import Seat.Seat;
+import Seat.UsageSession;
 import SeatManager.SeatManager;
 
 
@@ -14,11 +15,15 @@ public class CheckInService {
 
     public CheckInService(MemberManager memberManager,
                           SeatManager seatManager,
-                          SessionManager sessionManager) {
+                          SessionManager sessionManager,
+                          payment.ILogManager logManager) {
         this.memberManager = memberManager;
         this.seatManager = seatManager;
         this.sessionManager = sessionManager;
+        this.logManager = logManager;
     }
+
+    private payment.ILogManager logManager;
 
     /*
      *  입실 처리 
@@ -52,7 +57,10 @@ public class CheckInService {
         }
 
         // UsageSession (세션 시작 시간, 좌석 정보 기록)
-        sessionManager.startSession(memberId, seatNumber);
+        UsageSession session = sessionManager.startSession(memberId, seatNumber);
+        if (session != null && logManager != null) {
+            logManager.saveUsageStart(session);
+        }
 
         return true;
     }

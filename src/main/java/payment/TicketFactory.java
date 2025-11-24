@@ -51,6 +51,11 @@ public class TicketFactory {
             case TIME_100H: return 100;
             case TIME_200H: return 200;
 
+            case DURATION_1W: return 7 * 24L;
+            case DURATION_2W: return 14 * 24L;
+            case DURATION_1M: return 30 * 24L;  // 월 단위는 30일 기준으로 확장
+            case DURATION_3M: return 90 * 24L;
+
             default:
                 System.err.println("해당 이용권은 연장할 수 없습니다.");
                 return 0;

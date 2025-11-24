@@ -9,6 +9,7 @@ public class UsageSession {
     private String userId;
     private LocalDateTime startTime;
     private LocalDateTime endTime;     // 퇴실 시각 (null이면 진행 중)
+    private Long durationMinutes;       // 종료 시점에 확정된 이용 시간
 
     public UsageSession(String userId, Seat seat) {
         if (userId == null || userId.isBlank())
@@ -20,6 +21,7 @@ public class UsageSession {
         this.seat = seat;
         this.startTime = LocalDateTime.now();
         this.endTime = null;
+        this.durationMinutes = null;
         // seat.occupy()를 호출하지 않는다.
         // 실제 좌석 점유/해제는 SeatManager가 담당.
     }
@@ -28,11 +30,15 @@ public class UsageSession {
         if (this.endTime != null)
             throw new IllegalStateException("이미 종료된 이용 세션입니다.");
         this.endTime = LocalDateTime.now();
+        this.durationMinutes = Math.max(0, Duration.between(startTime, endTime).toMinutes());
         // seat.vacate()를 호출하지 않는다.
-        // 퇴실/외출에 따른 좌석 비우기는 SeatManager가 수행.
+        // 좌석 비우기는 SeatManager가 수행.
     }
 
     public long getDurationInMinutes() {
+        if (durationMinutes != null) {
+            return durationMinutes;
+        }
         LocalDateTime to = (endTime != null) ? endTime : LocalDateTime.now();
         return Math.max(0, Duration.between(startTime, to).toMinutes());
     }
@@ -56,5 +62,13 @@ public class UsageSession {
 
     public LocalDateTime getEndTime() {
         return endTime;
+    }
+
+    /**
+     * 좌석 이동 시 세션에 좌석 정보를 반영.
+     */
+    public void switchSeat(Seat newSeat) {
+        if (newSeat == null) throw new IllegalArgumentException("새 좌석이 올바르지 않습니다.");
+        this.seat = newSeat;
     }
 }
