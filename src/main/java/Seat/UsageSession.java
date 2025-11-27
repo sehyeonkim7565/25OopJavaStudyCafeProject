@@ -12,6 +12,10 @@ public class UsageSession {
     private Long durationMinutes;       // 종료 시점에 확정된 이용 시간
 
     public UsageSession(String userId, Seat seat) {
+        this(userId, seat, LocalDateTime.now());
+    }
+
+    public UsageSession(String userId, Seat seat, LocalDateTime startTime) {
         if (userId == null || userId.isBlank())
             throw new IllegalArgumentException("이용자 ID는 반드시 입력해야 합니다.");
         if (seat == null)
@@ -19,7 +23,7 @@ public class UsageSession {
 
         this.userId = userId;
         this.seat = seat;
-        this.startTime = LocalDateTime.now();
+        this.startTime = (startTime != null) ? startTime : LocalDateTime.now();
         this.endTime = null;
         this.durationMinutes = null;
         // seat.occupy()를 호출하지 않는다.

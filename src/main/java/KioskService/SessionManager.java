@@ -5,10 +5,18 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List; 
 import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import Seat.Seat;
 import Seat.UsageSession;
 import SeatManager.SeatManager;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 
 /**
  * 좌석 이용 세션(UsageSession)을 관리하는 매니저.
@@ -94,5 +102,102 @@ public class SessionManager {
      */
     public List<UsageSession> getSessionHistory() {
         return Collections.unmodifiableList(sessionHistory);
+    }
+
+    /**
+     * usage.jsonl 로그를 읽어 종료되지 않은 세션을 복원.
+     * - type=SESSION & endTime==null 라인을 찾아 memberId 기준으로 최신 좌석을 반영
+     * - type=MOVE 로그를 순차 적용해 최종 좌석을 맞춤
+     * - 좌석이 없거나 이미 점유된 경우는 스킵
+     */
+    public void restoreActiveSessionsFromUsageLog(String usageLogPath) {
+        Path path = Paths.get(usageLogPath);
+        if (!Files.exists(path)) return;
+
+        // memberId -> 임시 세션 정보
+        class PendingSession {
+            String seatNumber;
+            LocalDateTime startTime;
+        }
+
+        Map<String, PendingSession> pending = new HashMap<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        List<String> lines;
+        try {
+            lines = Files.readAllLines(path);
+        } catch (Exception e) {
+            System.err.println("usage 로그 읽기 실패: " + path);
+            return;
+        }
+
+        for (String line : lines) {
+            if (line == null || line.isBlank()) continue;
+            JsonObject obj;
+            try {
+                obj = JsonParser.parseString(line).getAsJsonObject();
+            } catch (JsonSyntaxException | IllegalStateException e) {
+                continue;
+            }
+
+            String type = obj.has("type") ? obj.get("type").getAsString() : "SESSION";
+            if ("MOVE".equals(type)) {
+                // 이동 로그 -> 현재 열린 세션이 있을 때만 좌석 변경
+                String memberId = obj.has("memberId") ? obj.get("memberId").getAsString() : null;
+                String toSeat = obj.has("toSeat") ? obj.get("toSeat").getAsString() : null;
+                if (memberId != null && toSeat != null && pending.containsKey(memberId)) {
+                    pending.get(memberId).seatNumber = toSeat;
+                }
+                continue;
+            }
+
+            // SESSION 로그
+            String memberId = obj.has("memberId") ? obj.get("memberId").getAsString() : null;
+            String seatNumber = obj.has("seatNumber") ? obj.get("seatNumber").getAsString() : null;
+            String endTime = obj.has("endTime") && !obj.get("endTime").isJsonNull() ? obj.get("endTime").getAsString() : null;
+            if (memberId == null || seatNumber == null) continue;
+
+            if (endTime != null && !endTime.isBlank()) {
+                // 종료된 세션이면 후보에서 제거
+                pending.remove(memberId);
+                continue;
+            }
+
+            String startTimeStr = obj.has("startTime") && !obj.get("startTime").isJsonNull()
+                    ? obj.get("startTime").getAsString() : null;
+            LocalDateTime startTime = null;
+            try {
+                if (startTimeStr != null && !startTimeStr.isBlank()) {
+                    startTime = LocalDateTime.parse(startTimeStr, formatter);
+                }
+            } catch (Exception ignored) {}
+
+            PendingSession ps = new PendingSession();
+            ps.seatNumber = seatNumber;
+            ps.startTime = startTime;
+            pending.put(memberId, ps);
+        }
+
+        // 실제 좌석/세션에 반영
+        for (Map.Entry<String, PendingSession> entry : pending.entrySet()) {
+            String memberId = entry.getKey();
+            PendingSession ps = entry.getValue();
+            if (memberId == null || ps == null || ps.seatNumber == null) continue;
+
+            Seat seat = seatManager.findSeatByNumber(ps.seatNumber);
+            if (seat == null) continue;
+            if (!seat.isAvailable() && !memberId.equals(seat.getOccupantId())) {
+                continue; // 다른 사람이 점유 중이면 복원하지 않음
+            }
+
+            try {
+                seat.occupy(memberId);
+            } catch (IllegalStateException ise) {
+                continue;
+            }
+
+            UsageSession session = new UsageSession(memberId, seat, ps.startTime);
+            activeSessions.put(memberId, session);
+        }
     }
 }

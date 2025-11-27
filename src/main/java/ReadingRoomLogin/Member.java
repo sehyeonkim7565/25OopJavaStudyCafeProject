@@ -32,7 +32,7 @@ public class Member {
 
     // Getter / Setter
     public String getId() { return memberId; }
-    // SeatMap 등에서 쓰는 별칭
+    // SeatMap 등에서,,
     public String getMemberId() { return memberId; }
     public String getName() { return name; }
     public void setName(String newName) { this.name = newName; }

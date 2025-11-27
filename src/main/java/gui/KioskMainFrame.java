@@ -116,6 +116,8 @@ public class KioskMainFrame extends JFrame {
         this.paymentService = new PaymentService();
         this.ticketFactory = new TicketFactory();
         this.sessionManager = new SessionManager(seatManager);
+        // 재시작 시 usage 로그를 기반으로 진행 중 세션/좌석 복원
+        this.sessionManager.restoreActiveSessionsFromUsageLog("logs/usage.jsonl");
 
         // 서비스 객체 생성 (의존성 주입)
         this.checkInService = new CheckInService(memberManager, seatManager, sessionManager, logManager);
