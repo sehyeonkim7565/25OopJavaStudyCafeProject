@@ -105,18 +105,25 @@ public class SeatMapPanel extends JPanel {
         seatAreaPanel.setBounds(0, 50, 1000, 650);  // 필터 UI 아래
         seatAreaPanel.setBackground(new Color(240, 240, 240));
         add(seatAreaPanel);
-
-        // 뒤로가기 버튼
         JButton backBtn = new JButton("뒤로가기");
-        backBtn.setBounds(20, 620, 100, 40);
+        backBtn.setBounds(620, 10, 100, 30);
         add(backBtn);
-
+        // 뒤로가기 버튼
         backBtn.addActionListener(e -> {
             Member member = mainFrame.getCurrentMember();
-            if (member != null && member.hasValidTicket()) {
-                mainFrame.showPanel(KioskMainFrame.MAIN_MENU_PANEL);
+            if (member != null) {
+                Seat currentSeat = seatManager.findSeatByMember(member.getId());  // ★ getSeat() 대신 현재 사용 중인 좌석 조회
+                if (currentSeat != null) {
+                    mainFrame.showPanel(KioskMainFrame.MAIN_MENU_PANEL);
+                }
+                else if (member.hasValidTicket()) {
+                    mainFrame.showPanel(KioskMainFrame.LOGIN_PANEL);
+                }
+                else {
+                    mainFrame.showPanel(KioskMainFrame.TICKET_SELECTION_PANEL);
+                }
             } else {
-                mainFrame.showPanel(KioskMainFrame.TICKET_SELECTION_PANEL);
+                mainFrame.showPanel(KioskMainFrame.LOGIN_PANEL);
             }
         });
 

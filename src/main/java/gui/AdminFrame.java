@@ -168,7 +168,6 @@ class AdminFrame extends JFrame {
         // --- 중앙 분할 및 우측 로그 영역 (JTabbedPane) ---
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, memberPanel, createLogTabbedPane());
-        // 🌟 비율을 1:1로 수정
         splitPane.setResizeWeight(0.5); 
 
         cp.add(splitPane, BorderLayout.CENTER);
@@ -196,7 +195,7 @@ class AdminFrame extends JFrame {
         btnPanel.add(deleteBtn);
         btnPanel.add(refreshBtn);
 
-        cp.add(btnPanel, BorderLayout.SOUTH);
+        memberPanel.add(btnPanel, BorderLayout.SOUTH);
 
         // --- 이벤트 리스너 ---
         
@@ -251,9 +250,9 @@ class AdminFrame extends JFrame {
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
 
-        tabbedPane.addTab("✅ 이용 기록", createUsagePanel()); 
-        tabbedPane.addTab("💳 결제 기록", createPaymentPanel()); 
-        tabbedPane.addTab("🍔 상품 주문 기록", createOrderPanel()); 
+        tabbedPane.addTab("이용 기록", createUsagePanel());
+        tabbedPane.addTab("결제 기록", createPaymentPanel());
+        tabbedPane.addTab("상품 주문 기록", createOrderPanel());
 
         return tabbedPane;
     }
@@ -367,7 +366,7 @@ class AdminFrame extends JFrame {
             JLabel label = new JLabel(
                     String.format("ID: %s | 상품: %s | 금액: %,d원 | 방법: %s (%s)", 
                         nvl(value.memberID),         
-                        displayProduct,              // 🌟 수정된 문자열 사용
+                        displayProduct,
                         value.price,                 
                         nvl(value.paymentMethod),    
                         nvl(value.paymentTime)       
