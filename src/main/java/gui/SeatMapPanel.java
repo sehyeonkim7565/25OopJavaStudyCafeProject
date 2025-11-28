@@ -82,7 +82,15 @@ public class SeatMapPanel extends JPanel {
         seatTypeCombo.addActionListener(e -> runAutoFilter());
 
         // 전체보기 버튼
-        resetBtn.addActionListener(e -> initializeSeats());
+        resetBtn.addActionListener(e -> {
+            weakCb.setSelected(false);
+            strongCb.setSelected(false);
+            zoneCombo.setSelectedIndex(0);
+            seatTypeCombo.setSelectedIndex(0);
+        
+            // 전체 좌석 다시 표시
+            initializeSeats();
+        });
 
         // 좌석 배치 영역 패널
         seatAreaPanel = new JPanel() {
