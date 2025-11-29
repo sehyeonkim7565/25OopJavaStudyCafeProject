@@ -1,3 +1,4 @@
+
 package ReadingRoomLogin;
 // --------------------------------------------------
 // 회원 관리자 (파일 입출력 담당)
@@ -16,7 +17,7 @@ import java.util.ArrayList;
 
 public class MemberManager implements IMemberManager { //public 추가 11/13
     private ArrayList<Member> members = new ArrayList<>();
-    private final File file = new File("src/main/java/members.txt");
+    private final File file = new File("members.txt");
 
     // 11/17 생성자 추가: 프로그램 시작 시 파일에서 회원 정보 로드
     public MemberManager() {
