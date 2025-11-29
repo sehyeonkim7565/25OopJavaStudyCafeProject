@@ -1,3 +1,4 @@
+
 package Ticket;
 
 public abstract class Ticket {
