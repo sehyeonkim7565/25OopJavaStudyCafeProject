@@ -1,3 +1,4 @@
+
 package Ticket;
 
 public class TimeTicket extends Ticket {
